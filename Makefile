@@ -5,18 +5,20 @@ src = $(wildcard src/*.cpp) \
 	$(wildcard grammar/MiniDecafParser.cpp) \
 	$(wildcard grammar/MiniDecafVisitor.cpp) \
 	$(wildcard grammar/MiniDecafBaseVisitor.cpp)
+obj = $(src:.c=.o)
 
-CXXFLAGS = -Wall -g \
-	-I/usr/local/include/antlr4-runtime \
-	-Igrammar
-
+CXXFLAGS = -I/usr/local/include/antlr4-runtime \
+	-Igrammar \
+#	-Wall -g
 
 LDFLAGS = -lantlr4-runtime
 
-MiniDecaf: $(src) antlr
+MiniDecaf: $(src) clear antlr
+	clear
 	$(CC) -o $@ $(src) $(CXXFLAGS) $(LDFLAGS)
 
-.PHONY: antlr clean
+
+.PHONY: antlr clean clear
 
 antlr: grammar/CommonLex.g4 grammar/MiniDecaf.g4
 	cd grammar && java -jar /usr/local/lib/antlr-4.8-complete.jar \

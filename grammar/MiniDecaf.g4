@@ -2,18 +2,23 @@ grammar MiniDecaf;
 
 import CommonLex;
 
-prog
-    : func EOF
+
+program
+    : function
     ;
 
-func
-    : 'int' 'main' '(' ')' '{' stmt '}'
+function
+    : type Identifier '(' ')' '{' statement '}'
     ;
 
-stmt
-    : 'return' expr ';'                                             # returnStmt
+type
+    : 'int'
     ;
 
-expr
-    : Interger
+statement
+    : 'return' expression ';'
+    ;
+
+expression
+    : Integer
     ;

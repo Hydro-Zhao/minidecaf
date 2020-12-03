@@ -42,7 +42,7 @@ GE : '>=';
 
 
 // integer, identifier
-Interger
+Integer
     : [0-9]+
     ;
 

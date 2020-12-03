@@ -122,6 +122,12 @@ IR有很多种类，包括三地址码(Three Address Code, TAC)，静态单赋�
 
 按照指导手册给出的规范，antlr编译时会提示`warning(125): minidecaf.g4:22:6: implicit definition of token Integer in parser`
 
+visit 函数返回值的类型是 T
+
+context 就是 AST 的结点，每个 context 也有一个 accept 函数接受 visitor
+
+visitor 还自带一个方法 visitChildren：遍历所有子结点。返回最后一个子结点的返回值。
+
 ### step2 常量表达式
 
 ### step3 常量表达式
