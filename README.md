@@ -14,6 +14,8 @@ LLVM tutorial包含前端，后端，汇编器的实现指导
 
 按照官方Cpp runtime构建方法编译，并将include和lib复制到/usr/local/include和/usr/local/lib中（不用运行`ldconfig`）
 
+同时提供Makefile和CMakeList.txt。主要是做了这么多PA，还没有自己从头开始写的作业，我也还没正真写过Makefile，就顺便写了。CMake的tutorial看的有点昏，不知道讲什么（我自己没有太多项目经验，需求太少），make的文档也很全，但是我觉得我更需要的是那种Makefile C/Cpp best practice的东西。
+
 [minidecaf相关文档](https://github.com/decaf-lang/minidecaf/tree/dev-specs/doc)，包含minidecaf实验演变过程，minidecaf语法，riscv指令介绍，riscv汇编介绍。
 
 ## 文档摘要及实验记录
