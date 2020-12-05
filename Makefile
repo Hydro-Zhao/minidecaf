@@ -8,17 +8,16 @@ src = $(wildcard src/*.cpp) \
 obj = $(src:.c=.o)
 
 CXXFLAGS = -I/usr/local/include/antlr4-runtime \
-	-Igrammar \
+	-Igrammar
 #	-Wall -g
 
 LDFLAGS = -lantlr4-runtime
 
-MiniDecaf: $(src) clear antlr
+MiniDecaf: $(src)
 	clear
 	$(CC) -o $@ $(src) $(CXXFLAGS) $(LDFLAGS)
 
-
-.PHONY: antlr clean clear
+.PHONY: antlr clean
 
 antlr: grammar/CommonLex.g4 grammar/MiniDecaf.g4
 	cd grammar && java -jar /usr/local/lib/antlr-4.8-complete.jar \

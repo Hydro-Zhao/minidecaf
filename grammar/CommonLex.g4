@@ -1,17 +1,46 @@
+// 祖传 lex
 lexer grammar CommonLex;
 
-// keyword
-Int : 'int';
-Return : 'return';
-If : 'if';
-Else : 'else';
-For : 'for';
-While : 'while';
-Do : 'do';
-Break : 'break';
-Continue : 'continue'; 
 
-// operator
+// 关键字
+Int
+    : 'int'
+    ;
+
+Return
+    : 'return'
+    ;
+
+If
+    : 'if'
+    ;
+
+Else
+    : 'else'
+    ;
+
+For
+    : 'for'
+    ;
+
+Do
+    : 'do'
+    ;
+
+While
+    : 'while'
+    ;
+
+Break
+    : 'break'
+    ;
+
+Continue
+    : 'continue'
+    ;
+
+
+// 标点、操作符
 Lparen : '(' ;
 Rparen : ')' ;
 Lbrkt : '[' ;
@@ -19,37 +48,72 @@ Rbrkt : ']' ;
 Lbrace : '{' ;
 Rbrace : '}' ;
 Comma : ',' ;
-Semicolon : ';';
-Question : '?';
-Colon : ':';
+Semicolon : ';' ;
 
-Minus : '-';
-Exclamation : '!';
-Tilde : '~';
-Addition : '+';
-Multiplication : '*';
-AND : '&';
-Division : '/';
-Modulo : '%';
-LAND : '&&';
-LOR : '||';
-EQ : '==';
-NEQ : '!=';
-LT : '<';
-LE : '<=';
-GT : '>';
-GE : '>=';
+Punctuator
+    : Lparen
+    | Rparen
+    | Lbrkt
+    | Rbrkt
+    | Lbrace
+    | Rbrace
+    | Comma
+    | Semicolon
+    ;
+
+Plus : '+' ;
+Minus : '-' ;
+Asterisk : '*' ;
+Slash : '/' ;
+Percent : '%' ;
+Exclamation : '!' ;
+Tilde : '~' ;
+Ampersand : '&' ;
+Langle : '<' ;
+Rangle : '>' ;
+Langle_eq : '<=' ;
+Rangle_eq : '>=' ;
+Double_eq : '==' ;
+Exclam_eq : '!=' ;
+Equal : '=' ;
+Double_amp : '&&' ;
+Double_bar : '||' ;
+
+Operator
+    : Plus
+    | Minus
+    | Asterisk
+    | Slash
+    | Percent
+    | Exclamation
+    | Tilde
+    | Ampersand
+    | Langle
+    | Rangle
+    | Langle_eq
+    | Rangle_eq
+    | Double_eq
+    | Exclam_eq
+    | Equal
+    | Double_amp
+    | Double_bar
+    ;
 
 
-// integer, identifier
+// 其他
+
 Integer
-    : [0-9]+
+    : Digit+
+    ;
+
+Whitespace
+    : [ \t\n\r]+ -> skip
     ;
 
 Identifier
-    : [a-zA-Z_][a-zA-Z_0-9]*
+    : IdentLead WordChar*
     ;
 
-WS : 
-    [ \t\r\n] -> skip
-    ;
+fragment IdentLead: [a-zA-Z_];
+fragment WordChar: [0-9a-zA-Z_];
+fragment Digit: [0-9];

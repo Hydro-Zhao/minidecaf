@@ -37,4 +37,5 @@ grammar/**
 *.interp
 
 MiniDecaf
-test.c
+*.c
+*.txt
