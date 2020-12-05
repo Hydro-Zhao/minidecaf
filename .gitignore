@@ -38,4 +38,3 @@ grammar/**
 
 MiniDecaf
 *.c
-*.txt

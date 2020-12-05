@@ -1,18 +1,14 @@
 2020秋编译原理实验（与往年的Decaf没有关系）
 
-总体流程 lexer -> parser -> 名称解析（name resolution） -> 类型检查（type checking） -> 生成IR -> 生成汇编 （实验的主要部分就是semantic analysis）
-
 实践才能真正理解，也能解决很多疑惑 Get Hands Dirty
 
 增量式，循序渐进
 
 先看到源码熟悉大致框架，再看相关视频和文档会有事半功倍的效果
 
-## 
+## LLVM IR
 
 IRVisitor是LLVM IR相关visitor。需要开一个feature branch
-
-## LLVM IR
 
 TODO 加入LLVM IR的过程挺麻烦的，我还不熟悉llvm ir的使用，感觉文档也不太清晰，只能照着这个tutorial来改，对minidecaf的所有step支持非常不全。更大的问题是，在用clang++编译的时候，会报告antlr的库文件中有错误，根本无法成功编译。
 
@@ -30,12 +26,6 @@ TODO 加入LLVM IR的过程挺麻烦的，我还不熟悉llvm ir的使用，感�
 
 同时提供Makefile和CMakeList.txt。主要是做了这么多PA，还没有自己从头开始写的作业，我也还没正真写过Makefile，就当作练习。同时，加入LLVM IR之后会用到clang++，感觉用CMake应该会更方便一点。CMake的tutorial看的有点昏，不知道讲什么（我自己没有太多项目经验，需求太少），make的文档也很全，但是我觉得我更需要的是那种Makefile C/Cpp best practice的东西。
 
-## 文档摘要及实验记录
-
-> [minidecaf-tutorial](https://github.com/decaf-lang/minidecaf-tutorial)
-
-### step0
-
 riscv toolchain可以到SiFive上下载
 
 ```
@@ -45,79 +35,6 @@ qemu-riscv32
 
 export CLASSPATH=".:/usr/local/lib/antlr-4.8-complete.jar:$CLASSPATH"
 ```
-
-### step1 第一个编译器 仅一个return的main函数
-
-如果表示整数的字符串本身超过INT_MAX，stoi还有用吗？正确的做法应该是比较字符串，思维不要太僵硬。
-
-要先熟悉Antlr的使用（包括生成的cpp，header文件提供的API），了解生成的cpp、header文件与lexer.g4和parser.g4的关系。
-
-[Vistor模式](https://github.com/decaf-lang/minidecaf-tutorial/blob/master/docs/lab1/visitor.md)
-
-Antlr**规则命名**。listener, visitor, 产生式动作
-
-visit函数返回值的类型是antlrcpp::Any，
-
-> https://tomassetti.me/getting-started-antlr-cpp/
-> There is only one small thing to consider when using the default visitor: it returns a antlrcpp::Any object. This is a simple structure, used to accept any type. So, it does not impose any practical burden, but it is something to remember.
-
-context 就是 AST 的结点，每个 context 也有一个 accept 函数接受 visitor
-
-visitor 还自带一个方法 visitChildren：遍历所有子结点，返回最后一个子结点的返回值。但是任然有访问单个context的visit函数？）
-
-### step2 常量表达式 一元操作
-
-你可以把三条指令变成一条 Unary(op)，其中 op 是 "-"、"~" 或 "!"（即把这三个op写在一行，再用Antlr规则命名命名为Unary，在visitUnary中对不同操作进行处理）
-
-遍历 AST 时，遇到一元表达式的时候，先生成子表达式的 IR，然后再根据操作类型生成一个 neg 或 not 或 lnot
-
-### step3 常量表达式 加减乘除模
-
-### step4 常量表达式 比较和逻辑表达式
-
-### step5 变量和语句 局部变量和赋值
-
-对每个变量用一个数据结构维护其信息，如**名称、类型（step11）、声明位置、初始值等**。这个保存变量符号的表被称为**符号表（symbol table）**。那**变量偏移量**可以（一）作为变量数据结构的一个字段、（二）也可以维护一个变量到偏移量的映射、（三）通过某种方法计算得到。
-
-当然，不能用一张符号表覆盖整个程序，程序中不同位置的符号表是不同的。 例如，符号表只会包含被声明的变量的信息，因此在 int a=0; 之后的符号表比之前的多了一个条目表示 a 对应的变量数据结构。
-
-目前我们没有作用域的概念，在第7章引入作用域后，可以以节省空间的方法保存局部变量。
-
-引入栈帧的概念。
-
-区分IR物理栈和运算栈，但是我们之前一直在使用物理栈的空间来实现运算栈
-
-遇到读取变量 primary: Identifier 的时候，查符号表确定变量是第几个，然后生成 **frameaddr（生成栈上地址）**和 load。
-
-**FRAMESIZE** 是一个编译期已知的常量，等于 8 + 4 * 局部变量个数
-
-为了计算 prologue 中分配栈帧的大小，IR 除了一个指令列表，还要包含一个信息：局部变量的个数。
-
-step5 还需要生成 prologue 和 epilogue。
-
-### step6 变量和语句 if语句和条件表达式
-
-注意一个程序中的标号，也就是 label 的参数，必须唯一，否则跳转目的地就不唯一了。 简单地维护一个计数器即可，例如 label l1, label l2, label l3 ...
-
-### step7 块语句和作用域和更多语句 作用域和块语句
-
-step7 我们需要给自己的编译器新增一个阶段：**名称解析（name resolution）**，确定 AST 中出现的每个变量名分别对应那个变量。它位于语法分析和 IR 生成之间。它的输出是上面那棵 AST，但 AST 中所有涉及变量名的结点都增加一个属性，表示此处的变量名到底标识哪个变量。代码中，这样的属性可以实现为指向变量数据结构（step5栈帧 变量声明）的一个指针，也可以实现为一个从 AST 结点到变量的映射。因为变量相关的语义检查和名称解析密切相关，所以可以放到那里面去
-
-用于储存变量信息的**符号表的结构**也需要改进，以支持作用域。具体的，它需要支持1.符号表中，区分不同作用域的变量：支持声明覆盖（shadowing)、检查重复声明;2.离开某作用域时，要把其中的变量从符号表中删除。为此，我们把符号表改造为一个栈。栈中每个元素都对应一个开作用域，是一个列表，包含该作用域中至今声明过的所有变量。每进入一个作用域，就压栈一个空列表；离开作用域就弹栈。在符号表中查找变量名，从栈顶往下查找。每次遇到变量名时查找符号表，将其关联到具体的变量，或者报错变量未声明；每次遇到声明，确定 frameaddr、建立变量并插入符号表，或者报错变量重复声明。
-
-另外， 变量偏移量 和 栈帧大小 的计算方法可以做出修改。确定不能同时有用的变量可以使用同一片物理空间来保存，这样可以节约空间。如果我们还假设偏移量是 -12-4*frameaddr，那变量的 frameaddr 意义需要变化。 为了保证 step5 中叙述的栈帧性质，变量 frameaddr 的含义要改为是 “在此变量刚声明之前，所有开作用域中的变量总数”。
-
-### step8 块语句和作用域和更多语句 循环语句
-
-我们需要确定每个 break 和 continue 跳转到的标号是哪个。 实现很容易，类似符号表栈维护 break 标号栈和 continue 标号栈。遇到 Loop(...) 就（一）创建这个循环的 break 标号和 continue 标号（以及起始标号）； （二）把两个标号压入各自栈里； （三）离开 Loop 的时候弹栈。和 step6 一样，各个循环的标号需要唯一，简单地后缀一个计数器即可。每次遇到 break 语句，其跳转目标就是 break 标号栈的栈顶，如果栈为空就报错。continue 语句类似。
-
-### step9 函数和全局变量 函数
-
-类似符号表，我们需要**一张表维护函数的信息**。 当然，函数不会重名，所以不用解析名称。 这张表主要目的是记录函数本身的信息，方便语义检查。就 step9 而言，这个信息包括：参数个数（step11 开始还需要记录参数和返回值类型）。
-
-现在栈帧包含四块，从顶向下依次是运算栈、实参、局部变量、fp 和 ra
-
-还有一个问题就是形参的处理，例如foo()中调用bar()，bar 要访问参数a,b，那a,b放在哪儿？ 可以直接使用 foo 栈帧上的实参，那么 a 相对 fp 的偏移量为 0，同理 b 偏移量为 4。 因此 step7 中的偏移量计算方法仅限非参数的局部变量，而第 k>=0 个参数相对于 fp 的偏移量是 4*k。还有一种方法是把参数当成普通局部变量，在 prologue 中复制到栈帧中局部变量的区域（即两种的区别是callee的参数是在caller的栈帧上还是callee的栈帧上）。
 
 ### step10 函数和全局变量 全局变量
 
