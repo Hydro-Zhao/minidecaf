@@ -3,7 +3,6 @@
 #endif
 
 #include "IRVisitor.h"
-#include <iostream>
 #include <cstring>
 
 // For example, by browsing the LLVM language reference you’ll find several 
@@ -14,7 +13,7 @@
 
 // ------------------numeric literals------------------
 antlrcpp::Any IRVisitor::visitInteger(MiniDecafParser::IntegerContext *ctx) {
-    return ConstantInt::get(TheContext, APInt(std::stoi(ctx->getText())));
+    return ConstantInt::get(TheContext, APInt(std::stoi(ctx->Integer()->getText())));
 }
 
 // ------------------variable------------------
@@ -181,37 +180,38 @@ antlrcpp::Any IRVisitor::visitFunction(MiniDecafParser::FunctionContext *ctx) {
 
     // -------------------------------------function--------------------------
     // TODO double to Int
-  // First, check for an existing function from a previous 'extern' declaration.
-  Function *TheFunction = TheModule->getFunction(ctx->Identifier->getText());
+    // First, check for an existing function from a previous 'extern' declaration.
+    Function *TheFunction = TheModule->getFunction(ctx->Identifier->getText());
 
-  if (!TheFunction)
-    TheFunction = F;
+    if (!TheFunction)
+        TheFunction = F;
 
-  if (!TheFunction)
+    if (!TheFunction)
+        return nullptr;
+
+    // Create a new basic block to start insertion into.
+    BasicBlock *BB = BasicBlock::Create(*TheContext, "entry", TheFunction);
+    Builder->SetInsertPoint(BB);
+
+    // Record the function arguments in the NamedValues map.
+    NamedValues.clear();
+    for (auto &Arg : TheFunction->args())
+        NamedValues[std::string(Arg.getName())] = &Arg;
+
+    if (Value *RetVal = Body->codegen())
+    {
+        // Finish off the function.
+        Builder->CreateRet(RetVal);
+
+        // Validate the generated code, checking for consistency.
+        verifyFunction(*TheFunction);
+
+        return TheFunction;
+    }
+
+    // Error reading body, remove function.
+    TheFunction->eraseFromParent();
     return nullptr;
-
-  // Create a new basic block to start insertion into.
-  BasicBlock *BB = BasicBlock::Create(*TheContext, "entry", TheFunction);
-  Builder->SetInsertPoint(BB);
-
-  // Record the function arguments in the NamedValues map.
-  NamedValues.clear();
-  for (auto &Arg : TheFunction->args())
-    NamedValues[std::string(Arg.getName())] = &Arg;
-
-  if (Value *RetVal = Body->codegen()) {
-    // Finish off the function.
-    Builder->CreateRet(RetVal);
-
-    // Validate the generated code, checking for consistency.
-    verifyFunction(*TheFunction);
-
-    return TheFunction;
-  }
-
-  // Error reading body, remove function.
-  TheFunction->eraseFromParent();
-  return nullptr;
 }
 
 

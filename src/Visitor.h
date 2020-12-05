@@ -1,20 +1,14 @@
 # pragma once
 
 #include "MiniDecafBaseVisitor.h"
+#include <string>
+#include <iostream>
 
 class Visitor: public MiniDecafBaseVisitor {
 public:
-  antlrcpp::Any visitProgram(MiniDecafParser::ProgramContext *ctx) override;
-
-  antlrcpp::Any visitFunction(MiniDecafParser::FunctionContext *ctx) override;
-
-  antlrcpp::Any visitStatement(MiniDecafParser::StatementContext *ctx) override;
-
-  antlrcpp::Any visitExpression(MiniDecafParser::ExpressionContext *ctx) override;
-
-  antlrcpp::Any visitUnary(MiniDecafParser::UnaryContext *ctx) override;
-
   antlrcpp::Any visitInteger(MiniDecafParser::IntegerContext *ctx);
+  antlrcpp::Any visitProgram(MiniDecafParser::ProgramContext *ctx) override;
+  antlrcpp::Any visitMulDiv(MiniDecafParser::MulDivContext *ctx) override;
 
 private:
     void ERROR(char* str){
