@@ -33,8 +33,6 @@ TODO 加入LLVM IR的过程挺麻烦的，我还不熟悉llvm ir的使用，感�
 ## 文档摘要及实验记录
 
 > [minidecaf-tutorial](https://github.com/decaf-lang/minidecaf-tutorial)
->
-> [minidecaf相关文档](https://github.com/decaf-lang/minidecaf/tree/dev-specs/doc)，包含minidecaf实验演变过程，minidecaf语法，riscv指令介绍，riscv汇编介绍。
 
 ### step0
 

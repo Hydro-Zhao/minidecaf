@@ -3,6 +3,7 @@
 #include <cstring>
 
 
+// step1
 antlrcpp::Any Visitor::visitInteger(MiniDecafParser::IntegerContext *ctx) {
     // step1 integer must between 0~INT32_MAX
     std::string integer{ctx->Integer()->getText()};
@@ -25,6 +26,7 @@ antlrcpp::Any Visitor::visitProgram(MiniDecafParser::ProgramContext *ctx) {
     visitChildren(ctx);
 }
  
+// step3
 antlrcpp::Any visitMulDiv(MiniDecafParser::MulDivContext *ctx) {
   if (ctx->Slash()) {
       code.push_back("div");

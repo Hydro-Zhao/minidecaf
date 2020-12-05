@@ -6,8 +6,10 @@
 
 class Visitor: public MiniDecafBaseVisitor {
 public:
+// step1
   antlrcpp::Any visitInteger(MiniDecafParser::IntegerContext *ctx);
   antlrcpp::Any visitProgram(MiniDecafParser::ProgramContext *ctx) override;
+// step3
   antlrcpp::Any visitMulDiv(MiniDecafParser::MulDivContext *ctx) override;
 
 private:
