@@ -51,6 +51,7 @@ antlrcpp::Any visitPoinerType(MiniDecafParser::PoinerTypeContext *ctx) override;
 antlrcpp::Any visitIntType(MiniDecafParser::IntTypeContext *ctx) override;
 antlrcpp::Any visitAtomParen(MiniDecafParser::AtomParenContext *ctx) override;
 // step12
+  antlrcpp::Any visitArry(MiniDecafParser::ArryContext *ctx) override;
 
 
 private:
@@ -58,9 +59,10 @@ private:
         int index = 0;
         for (auto i = symbolTable.crbegin(); i != symbolTable.crend(); --i)
         {
+            for (auto j: i) 
+                index += j.size();
             if (i[ctx->Identifier()->getText()])
-                return index + i.size() - i[ctx->Identifier()->getText()].index;
-            index += i.size();
+                return index - i[ctx->Identifier()->getText()].index;
         }
         return -1;
     }

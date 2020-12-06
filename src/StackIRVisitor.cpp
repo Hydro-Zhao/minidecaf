@@ -19,28 +19,45 @@ antlrcpp::Any visitProgram(MiniDecafParser::ProgramContext *ctx) {
             ERROR("Duplicated declaration");
         Var variable;
         variable.index = local_index++;
+        variable.type = visit(ctx->type());
         variable.init = 0;
-        if (i->Equal())
-        {
-            if (i->expression()) 
-                ERROR("must assign const to global variable")
-            // 需要检查是否越界
-             std::string integer{i->Integer()->getText()};
-             std::string int_max{std::to_string(INT32_MAX)};
-             if (integer.size() > int_max.size()) {
-                 ERROR("Integer invalid");
-             } else if (integer.size() == int_max.size()) {
-                 for (int i=0; i<integer.size();++i) {
-                     if (integer[i] > int_max[i]) {
-                         ERROR("Integer invalid");
+        if (!ctx->Lbrkt()) {
+            if (i->Equal())
+            {
+                if (i->expression()) 
+                    ERROR("must assign const to global variable")
+                // 需要检查是否越界
+                 std::string integer{i->Integer()->getText()};
+                 std::string int_max{std::to_string(INT32_MAX)};
+                 if (integer.size() > int_max.size()) {
+                     ERROR("Integer invalid");
+                 } else if (integer.size() == int_max.size()) {
+                     for (int i=0; i<integer.size();++i) {
+                         if (integer[i] > int_max[i]) {
+                             ERROR("Integer invalid");
+                         }
                      }
                  }
-             }
-            // global variable是通过额外的汇编在.tss和.data段初始化的
-            variable.init = stoi(i->Integer()->getText()); 
-        } 
+                // global variable是通过额外的汇编在.tss和.data段初始化的
+                variable.init = stoi(i->Integer()->getText()); 
+            } 
+        } else {
+            if (i->Equal())
+                ERROR("cannot initialize array");
+            variable.basetype = variable.type;
+            variable.type = -1;
+            int size = 1;
+            for (auto j: i->Ingeger()) {
+                // TODO step12 每一维长度只能是正整数常数，不能是零或负数
+                variable.length_list.push_back(stoi(j->getText()));
+                size *= stoi(j->getText());
+            }
+            variable.size = size;
+            local_index += size - 1;
+        }
         symbol_table.back()[i->Identifier()->getText()] = variable;
     }
+
     for (auto i: ctx->declaration())
         visit(i->function());
     if (!func_table["main"])
@@ -98,6 +115,9 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
     else if (ctx->Ampersand()) {
         if (!unaryinfo.is_lvalue)
             ERROR("& must operate on a left value");
+        if (unaryinfo.type == -1)
+            ERROR("& cannot operate on array ");
+        code.push_back("pop");
         // 对源操作数类型没有要求，结果类型是 PointerType(源操作数类型)
         return NodeInfo{type: unaryinfo.type + 1,
                         is_lvalue: false};
@@ -111,24 +131,57 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
     }
 }
 
-// step3
+// step3, step12
  antlrcpp::Any visitAddSub(MiniDecafParser::AddSubContext *ctx) {
-    NodeInfo ropearand = visit(ctx->multiplicative());
     NodeInfo lopearand = visit(ctx->additive());
-    if (roperand.type != loperand.type)
-        ERROR("add sub implicit cast");
-    if (ctx->Plus()) 
-        code.push_back("add");
-    else if (ctx->Minus())
+    NodeInfo ropearand = visit(ctx->multiplicative());
+    // TODO 实验指导书对指针加减指针的要求有点不明确
+    if (ctx->Plus())  {
+        if (loperand.type > 0 && roperand.type > 0 ) 
+            ERROR("+ both are pointers");
+        if (loperand.type > 0 ) {
+            code.push_back("push 4");
+            code.push_back("mul");
+            code.push_back("add");
+            return NodeInfo{type: loperand.type, is_lvalue:true};
+        } else if (roperand.type > 0) {
+            code.push_back("add");
+            code.push_back("push 4");
+            code.push_back("mul");
+            return NodeInfo{type: roperand.type, is_lvalue:true};
+        } else {
+            code.push_back("add");
+            return NodeInfo{type: roperand.type, is_lvalue:false};
+        }
+    }
+    else if (ctx->Minus()) {
+        if ( loperand.type == 0 && roperand.type > 0)
+            ERROR("no int - pointer");
         code.push_back("sub");
-    return NodeInfo{type: roperand.type,
-                    is_lvalue: false};
+        if (loperand.type > 0 && roperand.type >0 ) {
+            if (loperand.type == roperand.type) {
+                code.push_back("push 4");
+                code.push_back("div");
+                return NodeInfo{type: loperand.type, is_lvalue:false};
+            } else {
+                ERROR("diff type pointer - pointer");
+            }
+        } else if (loperand.type > 0) {
+            code.push_back("push 4");
+            code.push_back("mul");
+            code.push_back("div");
+            return NodeInfo{type: loperand.type, is_lvalue:true};
+        } else {
+            code.push_back("div");
+            return NodeInfo{type: 0, is_lvalue:false};
+        }
+    }
   }
 
   antlrcpp::Any visitMulDiv(MiniDecafParser::MulDivContext *ctx) {
 // TODO 修复Bug 添加别名之后，就没有原来产生式左边的AST了，也就无法visit了
-    NodeInfo rvalue = visit(ctx->unary());
     NodeInfo lvalue = visit(ctx->multiplicative());
+    NodeInfo rvalue = visit(ctx->unary());
     if (lvalue.type != 0 || rvalue.type != 0)
         ERROR("*/% cannot operate on pointer");
     if (lvalue.type != rvalue.type)
@@ -161,8 +214,8 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
 
 // step4
   antlrcpp::Any visitLogicOr(MiniDecafParser::LogicOrContext *ctx) {
-    NodeInfo roperand = visit(ctx->logical_and());
     NodeInfo loperand = visit(ctx->logical_or());
+    NodeInfo roperand = visit(ctx->logical_and());
     if (roperand.type != loperand.type)
         ERROR("logic or implicit cast");
     if (roperand.type != 0)
@@ -172,8 +225,8 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
   }
 
   antlrcpp::Any visitLogicAnd(MiniDecafParser::LogicAndContext *ctx) {
-    NodeInfo roperand = visit(ctx->equality());
     NodeInfo loperand = visit(ctx->logical_and());
+    NodeInfo roperand = visit(ctx->equality());
     if (roperand.type != loperand.type)
         ERROR("logic and implicit cast");
     if (roperand.type != 0)
@@ -183,8 +236,8 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
   }
 
   antlrcpp::Any visitEqual(MiniDecafParser::EqualContext *ctx) {
-    NodeInfo roperand = visit(ctx->relational());
     NodeInfo loperand = visit(ctx->equality());
+    NodeInfo roperand = visit(ctx->relational());
     if (roperand.type != loperand.type)
         ERROR("== != implicit cast");
     if (ctx->Double_eq()) {
@@ -198,8 +251,8 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
   }
 
   antlrcpp::Any visitLessGreat(MiniDecafParser::LessGreatContext *ctx) {
-    NodeInfo roperand = visit(ctx->additive());
     NodeInfo loperand = visit(ctx->relational());
+    NodeInfo roperand = visit(ctx->additive());
     if (roperand.type != loperand.type)
         ERROR("< > <= >= implicit cast");
     if (roperand.type != 0)
@@ -232,29 +285,44 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
 // 因为expression是递归的，只能在它的上一步pop，而可以直接在declaration处pop
 antlrcpp::Any visitDeclaration(MiniDecafParser::DeclarationContext *ctx)
 {
-    // TODO 这一步的declaration不包括数组
     if (symbol_table.back()[ctx->Identifier()->getText()])
         ERROR("Duplicated declaration");
     Var variable;
     // 没有复用不冲突的变量的空间，而是全部都在栈上占有位置
-    variable.index = local_index++;paranum++;
+    variable.index = local_index++;
     variable.type = visit(ctx->type());
     // push variable before assign to support "a=a+1"
-    symbol_table.back()[ctx->Identifier()->getText()] = variable;
-    if (ctx->Equal())
-    {
-        visit(ctx->expression);
-        code.push_back("load");
-        code.push_back("frameaddr " + std::to_string(symbol_table.top().size() - 1));
-        code.push_back("store");
+    if (!ctx->Lbrkt()) {
+        if (ctx->Equal())
+        {
+            visit(ctx->expression);
+            code.push_back("frameaddr " + std::to_string(local_index - 1));
+            code.push_back("store");
 // step5 实验指导 遇到表达式语句时，生成完表达式的 IR 以后记得再生成一个 pop
-        code.push_back("pop");
+            code.push_back("pop");
+        }
+        paranum++;
+    } else {
+        if (ctx->Equal())
+            ERROR("cannot initialize array");
+        variable.basetype = variable.type;
+        variable.type = -1;
+        int size = 1;
+        for (auto i: ctx->Ingeger()) {
+            // TODO step12 每一维长度只能是正整数常数，不能是零或负数
+            variable.length_list.push_back(stoi(j->getText()));
+            size *= stoi(i->getText());
+        }
+        variable.size = size;
+        local_index += size - 1;
+        paranum += size;
     }
+    symbol_table.back()[ctx->Identifier()->getText()] = variable;
     return NodeInfo{type:variable.type,
                     is_lvalue:true};
 }
 
-// 这里默认生成的是地址，如果需要右值，要自行添加load指令
+// 这里默认生成的是右值，如果需要地址自行添加pop指令（基本只有&操作符需要）
 antlrcpp::Any visitIdentifier(MiniDecafParser::IdentifierContext *ctx) {
     int find = find_symbol(ctx->Identifier()->getText());
     if (find == -1)
@@ -263,13 +331,16 @@ antlrcpp::Any visitIdentifier(MiniDecafParser::IdentifierContext *ctx) {
     // global varible
     if (index <= symbol_table.front().size()) {
         code.push_back("globaladdr "+ctx->Identifier()->getText())
-        //code.push_back("load");
+        code.push_back("load");
     } else {
         code.push_back("frameaddr " + std::to_string(index));
-        //code.push_back("load");
+        code.push_back("load");
     }
-    return NodeInfo{type:find_symbol_type(ctx->Identifier()->getText()),
-                    is_lvalue:true};
+    int type = find_symbol_type(ctx->Identifier()->getText());
+    bool is_lvalue = true;
+    if (type == -1)
+        is_lvalue = false;
+    return NodeInfo{type:type, is_lvalue:is_lvalue};
 }
 
 antlrcpp::Any visitAssign(MiniDecafParser::AssignContext *ctx) override {
@@ -495,6 +566,7 @@ antlrcpp::Any visitContinue(MiniDecafParser::ContinueContext *ctx) {
 
 
 // step9, step10
+// TODO 处理参数是数组的情况
   antlrcpp::Any visitFunction(MiniDecafParser::FunctionContext *ctx) override {
       // TODO 函数声明和定义的参数个数、同一位置的参数类型、以及返回值类型必须相同
 
@@ -591,4 +663,29 @@ antlrcpp::Any visitAtomParen(MiniDecafParser::AtomParenContext *ctx) {
     return visit(ctx->expression());
 }
 // step12
-// TODO array返回nodeinfo
+// 数组类型的表达式仅能参与如下运算：类型转换、下标。和指针不同，数组类型的表达式不能参与赋值
+// TODO 注意，这里判断不要写 e1.type == PointerType, 而要写 e1.type instanceof PointerType?
+  antlrcpp::Any visitArry(MiniDecafParser::ArryContext *ctx) {
+      NodeInfo operand = visit(ctx->postfix());
+      NodeInfo index = visit(ctx->expression()); 
+      if (operand.type == 1)
+        ERROR("must be pointer or array");
+      if (index.type != 1)
+        ERROR("must be int");
+      if (operand.type > 0) {
+            code.push_back("push 4");
+            code.push_back("mul");
+            code.push_back("add");
+            // 默认加上load作为右值，以和数组的下标访问行为一致，
+            // 如果要左值，需要自行添加pop，这也和visitIdentifier的行为一致
+          code.push_back("load");
+          return NodeInfo{type=operand->type(), is_lvalue = true};
+      } else {
+          code.push_back("push 4");
+          code.push_back("mul");
+          code.push_back("add");
+          // 在minidecaf中数组类型不能参与赋值。也就是说只能是右值？
+          code.push_back("load");
+          return NodeInfo{type=operand->basetype(),is_lvalue = false};
+      }
+  }
