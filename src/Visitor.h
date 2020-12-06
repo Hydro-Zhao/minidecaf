@@ -8,7 +8,7 @@
 #include <map>
 #include <list>
 
-class StackIRVisitor: public MiniDecafBaseVisitor {
+class Visitor: public MiniDecafBaseVisitor {
 public:
 // step1
   antlrcpp::Any visitProgram(MiniDecafParser::ProgramContext *ctx) override;
@@ -43,12 +43,10 @@ antlrcpp::Any visitBreak(MiniDecafParser::BreakContext *ctx) override;
 antlrcpp::Any visitContinue(MiniDecafParser::ContinueContext *ctx) override;
 // step9
   antlrcpp::Any visitFunction(MiniDecafParser::FunctionContext *ctx) override;
-  antlrcpp::Any visitParameter_list(MiniDecafParser::Parameter_listContext *ctx) override;
   antlrcpp::Any visitFuncCall(MiniDecafParser::FuncCallContext *ctx) override;
 // step11
   antlrcpp::Any visitCast(MiniDecafParser::CastContext *ctx) override;
-antlrcpp::Any visitPoinerType(MiniDecafParser::PoinerTypeContext *ctx) override;
-antlrcpp::Any visitIntType(MiniDecafParser::IntTypeContext *ctx) override;
+  antlrcpp::Any visitType(MiniDecafParser::TypeContext *ctx) override;
 antlrcpp::Any visitAtomParen(MiniDecafParser::AtomParenContext *ctx) override;
 // step12
   antlrcpp::Any visitArry(MiniDecafParser::ArryContext *ctx) override;

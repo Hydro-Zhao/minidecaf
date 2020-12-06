@@ -15,6 +15,7 @@ class Func {
     int paranum;
     int framesize;
     int type; // 表示返回值类型，甚至你可以就用整数表示类型,int 0,*1,**2...
+    std::vector<std::pair<int, std::string>> parameter_list;
 };
 
 class NodeInfo {

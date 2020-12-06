@@ -1,4 +1,4 @@
-#include "StackIRVisitor.h"
+#include "Visitor.h"
 
 #include <iostream>
 #include <cstring>
@@ -6,20 +6,18 @@
 
 // TODO add StackIRVisitor::
 // TODO C++中规定只要返回值不为void的函数没有return，不管返回值有没有被使用，都是未定义行为
-// TODO 修复Bug 添加别名之后，就没有原来产生式左边的AST了，也就无法visit了，我按错误的理解写完了实验
 
-// TODO 5.4. 执行完 main 函数但没有通过 return 结束时，返回值默认为 0。
-// 看一下函数实现部分有没有什么相关的返回值的要求
+// Antlr的API到底是怎么样的，使用了函数别名之后还能visit之前的吗？（之前的应该已经不是一个AST了吧）
 
 // step1, step10
-antlrcpp::Any visitProgram(MiniDecafParser::ProgramContext *ctx) {
+antlrcpp::Any Visitor::visitProgram(MiniDecafParser::ProgramContext *ctx) {
     local_index = 1;
     for (auto i: ctx->declaration()) {
         if (symbol_table.back()[i->Identifier()->getText()])
             ERROR("Duplicated declaration");
         Var variable;
         variable.index = local_index++;
-        variable.type = visit(ctx->type());
+        variable.type = visit(i->type());
         variable.init = 0;
         if (!ctx->Lbrkt()) {
             if (i->Equal())
@@ -58,20 +56,20 @@ antlrcpp::Any visitProgram(MiniDecafParser::ProgramContext *ctx) {
         symbol_table.back()[i->Identifier()->getText()] = variable;
     }
 
-    for (auto i: ctx->declaration())
-        visit(i->function());
+    for (auto i: ctx->function())
+        visit(i);
     if (!func_table["main"])
         ERROR("program does not have main function")
     return code;
 }
 
-antlrcpp::Any visitRetStmt(MiniDecafParser::RetStmtContext *ctx)  {
+antlrcpp::Any Visitor::visitRetStmt(MiniDecafParser::RetStmtContext *ctx)  {
     visit(ctx->expression());
     // 汇编中ret会跳转到epilogue 
     code.push_back("ret");
   }
  
-antlrcpp::Any Visitor::visitInteger(MiniDecafParser::IntegerContext *ctx) {
+antlrcpp::Any Visitor::visitor::visitInteger(MiniDecafParser::IntegerContext *ctx) {
     std::string integer{ctx->Integer()->getText()};
     std::string int_max{std::to_string(INT32_MAX)};
     if (integer.size() > int_max.size()) {
@@ -89,7 +87,7 @@ antlrcpp::Any Visitor::visitInteger(MiniDecafParser::IntegerContext *ctx) {
 }
 
 // step2, step11
-antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
+antlrcpp::Any Visitor::visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
     NodeInfo unaryinfo = visit(ctx->unary());
     if (ctx->Minus()) {
         if (unaryinfo.type != 0)
@@ -132,10 +130,9 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
 }
 
 // step3, step12
- antlrcpp::Any visitAddSub(MiniDecafParser::AddSubContext *ctx) {
+ antlrcpp::Any Visitor::visitAddSub(MiniDecafParser::AddSubContext *ctx) {
     NodeInfo lopearand = visit(ctx->additive());
     NodeInfo ropearand = visit(ctx->multiplicative());
-    // TODO 实验指导书对指针加减指针的要求有点不明确
     if (ctx->Plus())  {
         if (loperand.type > 0 && roperand.type > 0 ) 
             ERROR("+ both are pointers");
@@ -178,8 +175,7 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
     }
   }
 
-  antlrcpp::Any visitMulDiv(MiniDecafParser::MulDivContext *ctx) {
-// TODO 修复Bug 添加别名之后，就没有原来产生式左边的AST了，也就无法visit了
+  antlrcpp::Any Visitor::visitMulDiv(MiniDecafParser::MulDivContext *ctx) {
     NodeInfo lvalue = visit(ctx->multiplicative());
     NodeInfo rvalue = visit(ctx->unary());
     if (lvalue.type != 0 || rvalue.type != 0)
@@ -193,7 +189,6 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
                         is_lvalue: false};
     } 
     else if (ctx->Slash()) {
-// TODO 修复Bug 添加别名之后，就没有原来产生式左边的AST了，也就无法visit了
         if (ctx->unary()->postfix()->primary()->Integer())
             if (ctx->unary()->postfix()->primary()->Integer()->getText() = "0")
                 ERROR("div 0 error");
@@ -202,7 +197,6 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
                         is_lvalue: false};
     }
     else if (ctx->Percent()) {
-// TODO 修复Bug 添加别名之后，就没有原来产生式左边的AST了，也就无法visit了
         if (ctx->unary()->postfix()->primary()->Integer())
             if (ctx->unary()->postfix()->primary()->Integer()->getText() = "0")
                 ERROR("div 0 error");
@@ -213,7 +207,7 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
   }
 
 // step4
-  antlrcpp::Any visitLogicOr(MiniDecafParser::LogicOrContext *ctx) {
+  antlrcpp::Any Visitor::visitLogicOr(MiniDecafParser::LogicOrContext *ctx) {
     NodeInfo loperand = visit(ctx->logical_or());
     NodeInfo roperand = visit(ctx->logical_and());
     if (roperand.type != loperand.type)
@@ -224,7 +218,7 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
     return NodeInfo{type: 0,is_lvalue: false};
   }
 
-  antlrcpp::Any visitLogicAnd(MiniDecafParser::LogicAndContext *ctx) {
+  antlrcpp::Any Visitor::visitLogicAnd(MiniDecafParser::LogicAndContext *ctx) {
     NodeInfo loperand = visit(ctx->logical_and());
     NodeInfo roperand = visit(ctx->equality());
     if (roperand.type != loperand.type)
@@ -235,7 +229,7 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
     return NodeInfo{type: 0,is_lvalue: false};
   }
 
-  antlrcpp::Any visitEqual(MiniDecafParser::EqualContext *ctx) {
+  antlrcpp::Any Visitor::visitEqual(MiniDecafParser::EqualContext *ctx) {
     NodeInfo loperand = visit(ctx->equality());
     NodeInfo roperand = visit(ctx->relational());
     if (roperand.type != loperand.type)
@@ -250,7 +244,7 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
     }
   }
 
-  antlrcpp::Any visitLessGreat(MiniDecafParser::LessGreatContext *ctx) {
+  antlrcpp::Any Visitor::visitLessGreat(MiniDecafParser::LessGreatContext *ctx) {
     NodeInfo loperand = visit(ctx->relational());
     NodeInfo roperand = visit(ctx->additive());
     if (roperand.type != loperand.type)
@@ -283,7 +277,7 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) {
 // step5 实验指导 遇到表达式语句时，生成完表达式的 IR 以后记得再生成一个 pop
 // 我想的是不需要表达式的返回值的地方都要pop，有expression, declaration两处
 // 因为expression是递归的，只能在它的上一步pop，而可以直接在declaration处pop
-antlrcpp::Any visitDeclaration(MiniDecafParser::DeclarationContext *ctx)
+antlrcpp::Any Visitor::visitDeclaration(MiniDecafParser::DeclarationContext *ctx)
 {
     if (symbol_table.back()[ctx->Identifier()->getText()])
         ERROR("Duplicated declaration");
@@ -323,7 +317,7 @@ antlrcpp::Any visitDeclaration(MiniDecafParser::DeclarationContext *ctx)
 }
 
 // 这里默认生成的是右值，如果需要地址自行添加pop指令（基本只有&操作符需要）
-antlrcpp::Any visitIdentifier(MiniDecafParser::IdentifierContext *ctx) {
+antlrcpp::Any Visitor::visitIdentifier(MiniDecafParser::IdentifierContext *ctx) {
     int find = find_symbol(ctx->Identifier()->getText());
     if (find == -1)
         ERROR("Variable not declared");
@@ -343,7 +337,7 @@ antlrcpp::Any visitIdentifier(MiniDecafParser::IdentifierContext *ctx) {
     return NodeInfo{type:type, is_lvalue:is_lvalue};
 }
 
-antlrcpp::Any visitAssign(MiniDecafParser::AssignContext *ctx) override {
+antlrcpp::Any Visitor::visitAssign(MiniDecafParser::AssignContext *ctx) override {
     NodeInfo rvalue = visit(ctx->expression());
     NodeInfo lvalue = visit(ctx->unary());
     if (!lvalue.is_lvalue)
@@ -356,7 +350,7 @@ antlrcpp::Any visitAssign(MiniDecafParser::AssignContext *ctx) override {
                     is_lvalue: true};
 }
 
-antlrcpp::Any visitSingleExpr(MiniDecafParser::SingleExprContext *ctx) {
+antlrcpp::Any Visitor::visitSingleExpr(MiniDecafParser::SingleExprContext *ctx) {
     for (auto i: ctx->expression()) {
         visit(i);
 // step5 实验指导 遇到表达式语句时，生成完表达式的 IR 以后记得再生成一个 pop
@@ -366,7 +360,7 @@ antlrcpp::Any visitSingleExpr(MiniDecafParser::SingleExprContext *ctx) {
 
 
 // step6
-  antlrcpp::Any visitIfStmt(MiniDecafParser::IfStmtContext *ctx) {
+  antlrcpp::Any Visitor::visitIfStmt(MiniDecafParser::IfStmtContext *ctx) {
     std::string end_label = "IF_LABEL_"  + std::to_string(if_order++);
     NodeInfo ifcond = visit(ctx->expression();
     if (ifcond.type != 0)
@@ -386,7 +380,7 @@ antlrcpp::Any visitSingleExpr(MiniDecafParser::SingleExprContext *ctx) {
 
   }
   
-  antlrcpp::Any visitCondExpr(MiniDecafParser::CondExprContext *ctx) {
+  antlrcpp::Any Visitor::visitCondExpr(MiniDecafParser::CondExprContext *ctx) {
       std::string end_label = "IF_LABEL_"  + std::to_string(if_order++);
       NodeInfo condcond = visit(ctx->logical_or());
     if (condcond.type != 0)
@@ -402,7 +396,7 @@ antlrcpp::Any visitSingleExpr(MiniDecafParser::SingleExprContext *ctx) {
 
 
 // step7
-antlrcpp::Any visitCompound_statement(MiniDecafParser::Compound_statementContext *ctx) {
+antlrcpp::Any Visitor::visitCompound_statement(MiniDecafParser::Compound_statementContext *ctx) {
     local_index_stack.push(local_index);
     local_index = 1;
     symbol_table.push_back(std::map<std::string,Var>{});
@@ -413,7 +407,7 @@ antlrcpp::Any visitCompound_statement(MiniDecafParser::Compound_statementContext
 }
 
 // step8
-antlrcpp::Any visitForLoop(MiniDecafParser::ForLoopContext *ctx) {
+antlrcpp::Any Visitor::visitForLoop(MiniDecafParser::ForLoopContext *ctx) {
     std::string beginloop_label = "BEGINLOOP_LABEL_"  + std::to_string(loop_order++);
 
     std::string break_label = "BREAK_LABEL_"  + std::to_string(loop_order++);
@@ -423,7 +417,7 @@ antlrcpp::Any visitForLoop(MiniDecafParser::ForLoopContext *ctx) {
 
     // TODO expression1 pre 怎么确定有几个变量
     visit(ctx->expression());
-// step5 实验指导 遇到表达式语句时，生成完表达式的 IR 以后记得再生成一个 pop
+    // step5 实验指导 遇到表达式语句时，生成完表达式的 IR 以后记得再生成一个 pop
     code.push_back("pop");
     code.push_back("label "+ beginloop_label);
     // TODO expression2 cond 怎么确定有几个变量
@@ -456,7 +450,7 @@ antlrcpp::Any visitForLoop(MiniDecafParser::ForLoopContext *ctx) {
     continue_stack.pop();
 }
 
-antlrcpp::Any visitForLoopDec(MiniDecafParser::ForLoopDecContext *ctx) {
+antlrcpp::Any Visitor::visitForLoopDec(MiniDecafParser::ForLoopDecContext *ctx) {
     std::string beginloop_label = "BEGINLOOP_LABEL_"  + std::to_string(loop_order++);
 
     std::string break_label = "BREAK_LABEL_"  + std::to_string(loop_order++);
@@ -508,7 +502,7 @@ antlrcpp::Any visitForLoopDec(MiniDecafParser::ForLoopDecContext *ctx) {
     continue_stack.pop();
 }
 
-antlrcpp::Any visitWhileLoop(MiniDecafParser::WhileLoopContext *ctx) {
+antlrcpp::Any Visitor::visitWhileLoop(MiniDecafParser::WhileLoopContext *ctx) {
     std::string beginloop_label = "BEGINLOOP_LABEL_"  + std::to_string(loop_order++);
 
     std::string break_label = "BREAK_LABEL_"  + std::to_string(loop_order++);
@@ -530,7 +524,7 @@ antlrcpp::Any visitWhileLoop(MiniDecafParser::WhileLoopContext *ctx) {
     continue_stack.pop();
 }
 
-antlrcpp::Any visitDoLoop(MiniDecafParser::DoLoopContext *ctx) {
+antlrcpp::Any Visitor::visitDoLoop(MiniDecafParser::DoLoopContext *ctx) {
     std::string beginloop_label = "BEGINLOOP_LABEL_"  + std::to_string(loop_order++);
 
     std::string break_label = "BREAK_LABEL_"  + std::to_string(loop_order++);
@@ -552,13 +546,13 @@ antlrcpp::Any visitDoLoop(MiniDecafParser::DoLoopContext *ctx) {
     continue_stack.pop();
 }
 
-antlrcpp::Any visitBreak(MiniDecafParser::BreakContext *ctx) {
+antlrcpp::Any Visitor::visitBreak(MiniDecafParser::BreakContext *ctx) {
     if (!break_stack.top())
         ERROR("break out of loop");
     code.push_back("br " + break_stack.top());
 }
 
-antlrcpp::Any visitContinue(MiniDecafParser::ContinueContext *ctx) {
+antlrcpp::Any Visitor::visitContinue(MiniDecafParser::ContinueContext *ctx) {
     if (!continue_stack.top())
         ERROR("continue out of loop");
     code.push_back("br " + continue_stack.top());
@@ -566,9 +560,9 @@ antlrcpp::Any visitContinue(MiniDecafParser::ContinueContext *ctx) {
 
 
 // step9, step10
-// TODO 处理参数是数组的情况
-  antlrcpp::Any visitFunction(MiniDecafParser::FunctionContext *ctx) override {
+  antlrcpp::Any Visitor::visitFunction(MiniDecafParser::FunctionContext *ctx) override {
       // TODO 函数声明和定义的参数个数、同一位置的参数类型、以及返回值类型必须相同
+      // 定义和声明可能是分开的。除了这里，在调用的时候也要检查
 
       // 多次声明一个函数、以及定义后再声明，均是未定义行为
       // 函数声明中有重名参数，是未定义行为
@@ -585,6 +579,7 @@ antlrcpp::Any visitContinue(MiniDecafParser::ContinueContext *ctx) {
       }
       // 需要确定framesize
       if (func_table[ctx->Identifier()->getText()].framesize == -1) {
+          auto f =func_table[ctx->Identifier()->getText()];
           paranum = 0;
 
           code.push_back("label "+ "FUNC_" + ctx->Identifier()->getText());
@@ -593,13 +588,25 @@ antlrcpp::Any visitContinue(MiniDecafParser::ContinueContext *ctx) {
           local_index_stack.push(local_index);
           local_index = 1;
           symbol_table.push_back(std::map<std::string, Var>{});
-          visit(parameter_list);
+          // visit(parameter_list);
+          // 采用复制caller的参数到callee的栈上的方式，这样方便使用IR指令frameaddr，
+          // 感觉如果参数在caller中，IR表现力不够描述这种情况
+          // IR不处理复制参数的过程，放到prologue中*
+          // 没有指针类型的参数
+            for (int i =0:i< ctx->parameter_list()->Identifier().size();++i) {
+                std:string funcname =ctx->parameter_list()->Identifier(i)->getText(); 
+                f.parameter_list.push_back(std::make_pair(visit(ctx->parameter_list()->type(i)),funcname));
+                symbol_table.back()[funcname].index = local_index++;
+                paranum++;
+            }
           for (auto i : ctx->compound_statement->block_item())
               visit(i);
           symbol_table.pop_back();
           local_index = local_index_stack.top();
           local_index_stack.pop();
 
+          if (ctx->Identifier()->getText())
+              code.push_back("push 0");
           code.push_back("ret");
           // 汇编中还要生成epilogue，需要复制参数
 
@@ -608,28 +615,24 @@ antlrcpp::Any visitContinue(MiniDecafParser::ContinueContext *ctx) {
       else 
         ERROR("repeat declaration of function");
   }
-  // 采用复制caller的参数到callee的栈上的方式，这样方便使用IR指令frameaddr，
-  // 感觉如果参数在caller中，IR表现力不够描述这种情况
-  // IR不处理复制参数的过程，放到prologue中*
-  antlrcpp::Any visitParameter_list(MiniDecafParser::Parameter_listContext *ctx) {
-      for (auto i: ctx->Identifier()) {
-          symbol_table.back()[i->getText()].index = local_index++;
-          paranum++;
-      }
-  }
 
 // TODO 函数调用也属于expression，如果只是单纯调用，需要pop栈顶的返回值吗
-antlrcpp::Any visitFuncCall(MiniDecafParser::FuncCallContext *ctx) override {
+antlrcpp::Any Visitor::visitFuncCall(MiniDecafParser::FuncCallContext *ctx) override {
     // C语言中规定只有使用了未定义的返回值才是未定义行为
     // 而C++中规定只要返回值不为void的函数没有return，不管返回值有没有被使用，都是未定义行为
-    if (ctx->expression_list()->expression().size != func_table[ctx->Identifier()->getText()])
+    if (!func_table[ctx->Identifier()->getText()])
+        ERROR("no such function");
+    Func f = func_table[ctx->Identifier()->getText()];
+    if (ctx->expression_list()->expression().size != f.paranum);
         ERROR("parameter number is not correct");
-    // TODO 同一位置的参数类型也必须相同
       
     // TODO 将参数入栈，在IR中又需要显示pop吗？（lab9/calling.md）
+    int j = f.paranum;
     for (auto i=ctx->expression_list()->expression().crbegin();
-          i!=ctx->expression_list()->expression().crend();--i) {
-        visit(i);
+        i!=ctx->expression_list()->expression().crend();--i) {
+        NodeInfor param = visit(i);
+        if (param.type != f.parameter_list[j].first())
+            ERROR("function call parameter type error");
     }
     code.push_back("call " + "FUNC_" + ctx->Identifier()->getText());
     return NodeInfo{type=func_table[ctx->Identifier()->getText()].type,
@@ -637,35 +640,36 @@ antlrcpp::Any visitFuncCall(MiniDecafParser::FuncCallContext *ctx) override {
 }
 
 // step11
-antlrcpp::Any visitCast(MiniDecafParser::CastContext *ctx) {
+antlrcpp::Any Visitor::visitCast(MiniDecafParser::CastContext *ctx) {
     // TODO step11
     NodeInfo unaryinfo = visit(ctx->unary());
     return NodeInfo{type=visit(ctx->type()),
                   is_lvalue = unaryinfo.is_lvalue};
 }
 
-antlrcpp::Any visitPoinerType(MiniDecafParser::PoinerTypeContext *ctx) {
+antlrcpp::Any Visitor::visitType(MiniDecafParser::TypeContext *ctx)
+{
+    if (ctx->Int())
+        return 0;
     // （目前）只有int***这种情况
-    int type = 0;
-    if (ctx->type()){
-        return type += visit(ctx->type());
-    } else {
-        return  1;
+    else
+    {
+        int type = 0;
+        if (ctx->type())
+            return type += visit(ctx->type());
+        else
+            return 1;
     }
 }
 
-antlrcpp::Any visitIntType(MiniDecafParser::IntTypeContext *ctx) {
-    return 0;
-}
-
 // if e is left value, then (e) is left value
-antlrcpp::Any visitAtomParen(MiniDecafParser::AtomParenContext *ctx) {
+antlrcpp::Any Visitor::visitAtomParen(MiniDecafParser::AtomParenContext *ctx) {
     return visit(ctx->expression());
 }
 // step12
 // 数组类型的表达式仅能参与如下运算：类型转换、下标。和指针不同，数组类型的表达式不能参与赋值
 // TODO 注意，这里判断不要写 e1.type == PointerType, 而要写 e1.type instanceof PointerType?
-  antlrcpp::Any visitArry(MiniDecafParser::ArryContext *ctx) {
+  antlrcpp::Any Visitor::visitArry(MiniDecafParser::ArryContext *ctx) {
       NodeInfo operand = visit(ctx->postfix());
       NodeInfo index = visit(ctx->expression()); 
       if (operand.type == 1)

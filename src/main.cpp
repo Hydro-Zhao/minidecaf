@@ -1,7 +1,7 @@
 #include "MiniDecafLexer.h"
 #include "MiniDecafParser.h"
 #include "IRVisitor.h"
-#include "StackIRVisitor.h"
+#include "Visitor.h"
 #include "util.h"
 
 #include <iostream>

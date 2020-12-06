@@ -11,8 +11,8 @@ function
     ;
 
 type
-    : 'int'                                                                 # intType
-    | type '*'                                                              # poinerType
+    : 'int'
+    | type '*'
     ;
 
 parameter_list
