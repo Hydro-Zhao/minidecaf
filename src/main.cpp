@@ -1,8 +1,12 @@
 #include "MiniDecafLexer.h"
 #include "MiniDecafParser.h"
-#include "Visitor.h"
+#include "IRVisitor.h"
+#include "StackIRVisitor.h"
+#include "util.h"
 
 #include <iostream>
+#include <mpa>
+#include <vector>
 
 #ifdef LLVM_IR
 #include "llvm/ADT/APFloat.h"
@@ -38,6 +42,9 @@ int main(int argc, const char* argv[]) {
 
     Visitor visitor;
     visitor.visitProgram(tree); 
+    std::vector<std::string> code = visitor.get_code(); // 用于汇编生成
+    std::map<std::string, Var> global_symbol_table = visitor.get_global_symbol_table(); // 用于汇编生成
+    std::map<std::string, Func> func_table = visitor.get_func_table();
 
 #ifdef LLVM_IR
     LLVMContext TheContext;

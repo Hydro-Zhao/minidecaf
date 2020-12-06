@@ -1,6 +1,7 @@
 # pragma once
 
 #include "MiniDecafBaseVisitor.h"
+#include "util.h"
 
 #include <vector>
 #include <string>
@@ -23,10 +24,11 @@ antlrcpp::Any visitUnaryOp(MiniDecafParser::UnaryOpContext *ctx) override;
   antlrcpp::Any visitLogicAnd(MiniDecafParser::LogicAndContext *ctx) override;
   antlrcpp::Any visitEqual(MiniDecafParser::EqualContext *ctx) override;
   antlrcpp::Any visitLessGreat(MiniDecafParser::LessGreatContext *ctx) override;
-// step5 TODO
+// step5
   antlrcpp::Any visitDeclaration(MiniDecafParser::DeclarationContext *ctx) override;
   antlrcpp::Any visitIdentifier(MiniDecafParser::IdentifierContext *ctx) override;
 antlrcpp::Any visitAssign(MiniDecafParser::AssignContext *ctx) override;
+antlrcpp::Any visitSingleExpr(MiniDecafParser::SingleExprContext *ctx) override;
 // step6
   antlrcpp::Any visitIfStmt(MiniDecafParser::IfStmtContext *ctx) override;
   antlrcpp::Any visitCondExpr(MiniDecafParser::CondExprContext *ctx) override;
@@ -43,17 +45,15 @@ antlrcpp::Any visitContinue(MiniDecafParser::ContinueContext *ctx) override;
   antlrcpp::Any visitFunction(MiniDecafParser::FunctionContext *ctx) override;
   antlrcpp::Any visitParameter_list(MiniDecafParser::Parameter_listContext *ctx) override;
   antlrcpp::Any visitFuncCall(MiniDecafParser::FuncCallContext *ctx) override;
-// step10
 // step11
+  antlrcpp::Any visitCast(MiniDecafParser::CastContext *ctx) override;
+antlrcpp::Any visitPoinerType(MiniDecafParser::PoinerTypeContext *ctx) override;
+antlrcpp::Any visitIntType(MiniDecafParser::IntTypeContext *ctx) override;
+antlrcpp::Any visitAtomParen(MiniDecafParser::AtomParenContext *ctx) override;
 // step12
 
+
 private:
-
-    void ERROR(char* str){
-        std::cerr << "[ERROR] " << str << std::endl;
-        exit(1);
-    }
-
     int find_symbol(std::string name) {
         int index = 0;
         for (auto i = symbolTable.crbegin(); i != symbolTable.crend(); --i)
@@ -65,6 +65,16 @@ private:
         return -1;
     }
 
+    int find_symbol_type(std::string name) {
+        for (auto i = symbolTable.crbegin(); i != symbolTable.crend(); --i)
+        {
+            if (i[ctx->Identifier()->getText()])
+                return i[ctx->Identifier()->getText()].type;
+        }
+        // never, because this function is called after find_symbol
+        return -1;
+    }
+
     int symbol_table_size() {
         int size =0;
         for (auto i: symbolTable)
@@ -73,14 +83,11 @@ private:
     }
 
 private:
-    std::vector<std::string> code;
+    std::vector<std::string> code; // 需要导出，可以改成动态内存分配
     // step5, step7
     int local_index=1;
     std::stack<int> local_index_stack;
-    std::list<std::map<std::string, Var>> symbol_table;
-    class Var {
-        int index; // start with 1
-    };
+    std::list<std::map<std::string, Var>> symbol_table; //需要导出
     // step6
     int if_order = 0;
     // step8
@@ -88,11 +95,16 @@ private:
     std::stack<std::string> continue_stack;
     std::stack<std::string> break_stack;
     // step9
-    std::map<std::string, Func> func_table;
-    class Func {
-        // step11 开始还需要记录参数和返回值类型
-        int paranum;
-        int framesize;
-    };
+    std::map<std::string, Func> func_table; //需要导出
     int paranum; // 在prameter_list和declaration中会++，但是只是用于对函数的framesize计数
+public:
+    std::vector<std::string> get_code() {
+        return code; // 或许可以改成引用
+    }
+    std::map<std::string, Var> get_global_symbol_table() {
+        return symbol_table.front();
+    }
+    std::map<std::string, Func> get_func_table() {
+        return func_table;
+    }
 };

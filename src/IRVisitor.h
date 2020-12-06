@@ -17,6 +17,7 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
 
+#include "util.h"
 #include <map>
 #include <memory> 
 #include <iostream>
@@ -39,12 +40,6 @@ public:
     antlrcpp::Any visitLessGreat(MiniDecafParser::LessGreatContext *ctx) override;
   antlrcpp::Any visitFuncCall(MiniDecafParser::FuncCallContext *ctx) override;
 antlrcpp::Any visitFunction(MiniDecafParser::FunctionContext *ctx) override;
-
-private:
-    void ERROR(char* str){
-        std::cerr << "[ERROR] " << str << std::endl;
-        exit(1);
-    }
 
 private:
     LLVMContext& TheContext;
