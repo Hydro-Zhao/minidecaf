@@ -4,6 +4,33 @@
 
 TODO 后续还要生成汇编。
 
+TODO bug修复（主要因为对antlr API不熟）
+
+    数组引入后declaration中有多个Integer
+```
+src/Visitor.cpp:56:57: error: request for member ‘getText’ in ‘* MiniDecafParser::DeclarationContext::Integer()().std::vector<antlr4::tree::TerminalNode*>::begin().__gnu_cxx::__normal_iterator<antlr4::tree::TerminalNode**, std::vector<antlr4::tree::TerminalNode*> >::operator->()’, which is of pointer type ‘antlr4::tree::TerminalNode*’ (maybe you meant to use ‘->’ ?)
+   56 |         variable.init = std::stoi(i->Integer().begin()->getText());
+      |                                                         ^~~~~~~
+```
+
+    unary->postfix
+```
+src/Visitor.cpp:185:25: error: ‘class MiniDecafParser::UnaryContext’ has no member named ‘postfix’
+  185 |       if (ctx->unary()->postfix()->primary()->Integer()->getText() = "0")
+      |                         ^~~~~~~
+```
+
+    forloop 中expression的问题，见代码注释
+```
+src/Visitor.cpp:398:24: error: cannot convert ‘std::vector<MiniDecafParser::ExpressionContext*>’ to ‘antlr4::tree::ParseTree*’
+  398 |   visit(ctx->expression());
+      |         ~~~~~~~~~~~~~~~^~
+      |                        |
+      |                        std::vector<MiniDecafParser::ExpressionContext*>
+```
+
+TODO 12.8 在nodeinfo中添加了数组的basetype，但是没有在visitor.cpp中添加相应的返回项目（主要就是Identifier访问数组的时候要返回含basetype的nodeinfo）
+
 Get Hands Dirty
 
 增量式，循序渐进

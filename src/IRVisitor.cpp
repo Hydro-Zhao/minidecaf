@@ -1,25 +1,26 @@
-
 #ifdef LLVM_IR
-#endif
 
 #include "IRVisitor.h"
+#include "util.h"
 #include <cstring>
 
-// For example, by browsing the LLVM language reference you’ll find several 
-// other interesting instructions that are really easy to plug into our 
+// For example, by browsing the LLVM language reference you’ll find several
+// other interesting instructions that are really easy to plug into our
 // basic framework.
 
 // ================expression code generation==================
 
 // ------------------numeric literals------------------
 antlrcpp::Any IRVisitor::visitInteger(MiniDecafParser::IntegerContext *ctx) {
-    return ConstantInt::get(TheContext, APInt(std::stoi(ctx->Integer()->getText())));
+  return ConstantInt::get(TheContext,
+                          APInt(std::stoi(ctx->Integer()->getText())));
 }
 
 // ------------------variable------------------
 // TODO add loop induction variables in the symbol table and for local variables
 // improve the symbol table(also in main.cpp)
-// at now, the only values that can be in the NamedValues map are function arguments
+// at now, the only values that can be in the NamedValues map are function
+// arguments
 Value *VariableExprAST::codegen() {
   // Look this variable up in the function.
   Value *V = NamedValues[Name];
@@ -29,195 +30,184 @@ Value *VariableExprAST::codegen() {
 }
 
 // ------------------binary expression------------------
-// LLVM instructions are constrained by strict rules: 
-// for example, the Left and Right operators of an add instruction must have the same type, 
-// and the result type of the add must match the operand types.
+// LLVM instructions are constrained by strict rules:
+// for example, the Left and Right operators of an add instruction must have the
+// same type, and the result type of the add must match the operand types.
 antlrcpp::Any IRVisitor::visitMulDiv(MiniDecafParser::MulDivContext *ctx) {
-    Value *L = visit(ctx->additive());
-    Value *R = visit(ctx->multiplicative());
-    if (!L || !R)
-        Error("invalid TODO");
+  Value *L = visit(ctx->additive());
+  Value *R = visit(ctx->multiplicative());
+  if (!L || !R)
+    Error("invalid TODO");
 
-    if (ctx->Asterisk())
-        // TODO Float to Int
-        return Builder.CreateFMul(L, R, "multmp");
-    else if (ctx->Slash())
-        // TODO
-        ;
-    else if (ctx->Percent)
-        // TODO
-        ;
-    else
-        Error("invalid binary operator");
+  if (ctx->Asterisk())
+    // TODO Float to Int
+    return Builder.CreateFMul(L, R, "multmp");
+  else if (ctx->Slash())
+    // TODO
+    ;
+  else if (ctx->Percent)
+    // TODO
+    ;
+  else
+    Error("invalid binary operator");
 }
 
-antlrcpp::Any IRVisitor::visitAddSub(MiniDecafParser::AddSubContext *ctx)
-{
-    Value *L = visit(ctx->multiplicative());
-    Value *R = visit(ctx->unary());
-    if (!L || !R)
-        Error("invalid TODO");
+antlrcpp::Any IRVisitor::visitAddSub(MiniDecafParser::AddSubContext *ctx) {
+  Value *L = visit(ctx->multiplicative());
+  Value *R = visit(ctx->unary());
+  if (!L || !R)
+    Error("invalid TODO");
 
-    if (ctx->Plus())
-        // TODO Float to Int
-        return Builder.CreateFAdd(L, R, "addtmp");
-    else if (ctx->Minus())
-        // TODO Float to Int
-        return Builder.CreateFSub(L, R, "subtmp");
-    else
-        Error("invalid binary operator");
+  if (ctx->Plus())
+    // TODO Float to Int
+    return Builder.CreateFAdd(L, R, "addtmp");
+  else if (ctx->Minus())
+    // TODO Float to Int
+    return Builder.CreateFSub(L, R, "subtmp");
+  else
+    Error("invalid binary operator");
 }
 
-antlrcpp::Any IRVisitor::visitLogicOr(MiniDecafParser::LogicOrContext *ctx) override
-{
-    Value *L = visit(ctx->logical_or());
-    Value *R = visit(ctx->logical_and());
-    if (!L || !R)
-        Error("invalid TODO");
+antlrcpp::Any
+IRVisitor::visitLogicOr(MiniDecafParser::LogicOrContext *ctx) override {
+  Value *L = visit(ctx->logical_or());
+  Value *R = visit(ctx->logical_and());
+  if (!L || !R)
+    Error("invalid TODO");
 
-    if (ctx->Double_bar())
-        // TODO
-        ;
-    else
-        Error("invalid binary operator");
+  if (ctx->Double_bar())
+    // TODO
+    ;
+  else
+    Error("invalid binary operator");
 }
 
-antlrcpp::Any IRVisitor::visitLogicAnd(MiniDecafParser::LogicAndContext *ctx)
-{
-    if (!L || !R)
-        Error("invalid TODO");
+antlrcpp::Any IRVisitor::visitLogicAnd(MiniDecafParser::LogicAndContext *ctx) {
+  if (!L || !R)
+    Error("invalid TODO");
 
-    if (ctx->Double_amp())
-        // TODO
-        ;
-    else
-        Error("invalid binary operator");
+  if (ctx->Double_amp())
+    // TODO
+    ;
+  else
+    Error("invalid binary operator");
 }
 
-antlrcpp::Any IRVisitor::visitEqual(MiniDecafParser::EqualContext *ctx)
-{
-    Value *L = visit(ctx->equality());
-    Value *R = visit(ctx->relational());
-    if (!L || !R)
-        Error("invalid TODO");
+antlrcpp::Any IRVisitor::visitEqual(MiniDecafParser::EqualContext *ctx) {
+  Value *L = visit(ctx->equality());
+  Value *R = visit(ctx->relational());
+  if (!L || !R)
+    Error("invalid TODO");
 
-    if (ctx->Double_eq())
-        // TODO
-        ;
-    else if (ctx->Exclam_eq())
-        // TODO
-        ;
-    else
-        Error("invalid binary operator");
+  if (ctx->Double_eq())
+    // TODO
+    ;
+  else if (ctx->Exclam_eq())
+    // TODO
+    ;
+  else
+    Error("invalid binary operator");
 }
 
-antlrcpp::Any IRVisitor::visitLessGreat(MiniDecafParser::LessGreatContext *ctx)
-{
-    Value *L = visit(ctx->relational());
-    Value *R = visit(ctx->additive());
-    if (!L || !R)
-        Error("invalid TODO");
+antlrcpp::Any
+IRVisitor::visitLessGreat(MiniDecafParser::LessGreatContext *ctx) {
+  Value *L = visit(ctx->relational());
+  Value *R = visit(ctx->additive());
+  if (!L || !R)
+    Error("invalid TODO");
 
-    if (ctx->Langle())
-        // TODO Float to Int
-        return Builder.CreateFCmpULT(L, R, "cmptmp");
-    else if (ctx->Rangle())
-        // TODO
-        ;
-    else if (ctx->Langle_eq())
-        // TODO
-        ;
-    else if (ctx->Rangle_eq())
-        // TODO
-        ;
-    else
-        Error("invalid binary operator");
+  if (ctx->Langle())
+    // TODO Float to Int
+    return Builder.CreateFCmpULT(L, R, "cmptmp");
+  else if (ctx->Rangle())
+    // TODO
+    ;
+  else if (ctx->Langle_eq())
+    // TODO
+    ;
+  else if (ctx->Rangle_eq())
+    // TODO
+    ;
+  else
+    Error("invalid binary operator");
 }
 
 // ------------------call expression------------------
-antlrcpp::Any IRVisitor::visitFuncCall(MiniDecafParser::FuncCallContext *ctx)
-{
-    // Look up the name in the global module table.
-    Function *CalleeF = TheModule->getFunction(ctx->Identifier()->getText());
-    if (!CalleeF)
-        Error("Unknown function referenced");
+antlrcpp::Any IRVisitor::visitFuncCall(MiniDecafParser::FuncCallContext *ctx) {
+  // Look up the name in the global module table.
+  Function *CalleeF = TheModule->getFunction(ctx->Identifier()->getText());
+  if (!CalleeF)
+    Error("Unknown function referenced");
 
-    std::vector<ExpressionContext *> &Args = ctx->expression_list()->expression;
+  std::vector<ExpressionContext *> &Args = ctx->expression_list()->expression;
 
-    // If argument mismatch error.
-    if (CalleeF->arg_size() != Args.size())
-        Error("Incorrect # arguments passed");
+  // If argument mismatch error.
+  if (CalleeF->arg_size() != Args.size())
+    Error("Incorrect # arguments passed");
 
-    std::vector<Value *> ArgsV;
-    for (unsigned i = 0, e = Args.size(); i != e; ++i)
-    {
-        ArgsV.push_back(visit(Args[i]));
-        if (!ArgsV.back())
-            return nullptr;
-    }
+  std::vector<Value *> ArgsV;
+  for (unsigned i = 0, e = Args.size(); i != e; ++i) {
+    ArgsV.push_back(visit(Args[i]));
+    if (!ArgsV.back())
+      return nullptr;
+  }
 
-    return Builder.CreateCall(CalleeF, ArgsV, "calltmp");
+  return Builder.CreateCall(CalleeF, ArgsV, "calltmp");
 }
 
 // ================function code generation==================
 
 antlrcpp::Any IRVisitor::visitFunction(MiniDecafParser::FunctionContext *ctx) {
-    // 这里是两个函数拼接的(为了支持extern)，有一些冗余的地方
-    // -------------------------------------prototype--------------------------
-    // TODO double to Int
-    std::vector<ExpressionContext *> &Args = ctx->parameter_list()->Identifier();
-    // Make the function type:  double(double,double) etc.
-    std::vector<Type *> Doubles(Args.size(), Type::getDoubleTy(*TheContext));
-    FunctionType *FT =
-        FunctionType::get(Type::getDoubleTy(*TheContext), Doubles, false);
-    Function *F =
-        Function::Create(FT, Function::ExternalLinkage, ctx->Identifier->getText(), TheModule.get());
-    // Set names for all arguments.
-    unsigned Idx = 0;
-    for (auto &Arg : F->args())
-        Arg.setName(Args[Idx++]->getText());
-    //return F;
+  // 这里是两个函数拼接的(为了支持extern)，有一些冗余的地方
+  // -------------------------------------prototype--------------------------
+  // TODO double to Int
+  std::vector<ExpressionContext *> &Args = ctx->parameter_list()->Identifier();
+  // Make the function type:  double(double,double) etc.
+  std::vector<Type *> Doubles(Args.size(), Type::getDoubleTy(*TheContext));
+  FunctionType *FT =
+      FunctionType::get(Type::getDoubleTy(*TheContext), Doubles, false);
+  Function *F = Function::Create(FT, Function::ExternalLinkage,
+                                 ctx->Identifier->getText(), TheModule.get());
+  // Set names for all arguments.
+  unsigned Idx = 0;
+  for (auto &Arg : F->args())
+    Arg.setName(Args[Idx++]->getText());
+  // return F;
 
-    // -------------------------------------function--------------------------
-    // TODO double to Int
-    // First, check for an existing function from a previous 'extern' declaration.
-    Function *TheFunction = TheModule->getFunction(ctx->Identifier->getText());
+  // -------------------------------------function--------------------------
+  // TODO double to Int
+  // First, check for an existing function from a previous 'extern' declaration.
+  Function *TheFunction = TheModule->getFunction(ctx->Identifier->getText());
 
-    if (!TheFunction)
-        TheFunction = F;
+  if (!TheFunction)
+    TheFunction = F;
 
-    if (!TheFunction)
-        return nullptr;
-
-    // Create a new basic block to start insertion into.
-    BasicBlock *BB = BasicBlock::Create(*TheContext, "entry", TheFunction);
-    Builder->SetInsertPoint(BB);
-
-    // Record the function arguments in the NamedValues map.
-    NamedValues.clear();
-    for (auto &Arg : TheFunction->args())
-        NamedValues[std::string(Arg.getName())] = &Arg;
-
-    if (Value *RetVal = Body->codegen())
-    {
-        // Finish off the function.
-        Builder->CreateRet(RetVal);
-
-        // Validate the generated code, checking for consistency.
-        verifyFunction(*TheFunction);
-
-        return TheFunction;
-    }
-
-    // Error reading body, remove function.
-    TheFunction->eraseFromParent();
+  if (!TheFunction)
     return nullptr;
+
+  // Create a new basic block to start insertion into.
+  BasicBlock *BB = BasicBlock::Create(*TheContext, "entry", TheFunction);
+  Builder->SetInsertPoint(BB);
+
+  // Record the function arguments in the NamedValues map.
+  NamedValues.clear();
+  for (auto &Arg : TheFunction->args())
+    NamedValues[std::string(Arg.getName())] = &Arg;
+
+  if (Value *RetVal = Body->codegen()) {
+    // Finish off the function.
+    Builder->CreateRet(RetVal);
+
+    // Validate the generated code, checking for consistency.
+    verifyFunction(*TheFunction);
+
+    return TheFunction;
+  }
+
+  // Error reading body, remove function.
+  TheFunction->eraseFromParent();
+  return nullptr;
 }
-
-
-
-
-
 
 // ================if/then/else code generation==================
 // TODO migrate to Antlr
@@ -274,10 +264,8 @@ Value *IfExprAST::codegen() {
   return PN;
 }
 
-
 // ================for loop code generation==================
 // TODO migrate to Antlr
-
 
 Value *ForExprAST::codegen() {
   // Emit the start code first, without 'variable' in scope.
@@ -358,3 +346,5 @@ Value *ForExprAST::codegen() {
   // for expr always returns 0.0.
   return Constant::getNullValue(Type::getDoubleTy(*TheContext));
 }
+
+#endif

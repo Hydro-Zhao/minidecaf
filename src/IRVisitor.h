@@ -1,7 +1,6 @@
-# pragma once
+#pragma once
 
 #ifdef LLVM_IR
-#endif
 
 #include "MiniDecafBaseVisitor.h"
 
@@ -18,32 +17,33 @@
 #include "llvm/IR/Verifier.h"
 
 #include "util.h"
-#include <map>
-#include <memory> 
 #include <iostream>
+#include <map>
+#include <memory>
 
 using namespace llvm;
 
-class IRVisitor: public MiniDecafBaseVisitor {
+class IRVisitor : public MiniDecafBaseVisitor {
 public:
-    IRVisitor() : TheContext(TheContext),
-                  Builder(Builder),
-                  TheModule(TheModule),
-                  NamedValues(NamedValues) {}
+  IRVisitor()
+      : TheContext(TheContext), Builder(Builder), TheModule(TheModule),
+        NamedValues(NamedValues) {}
 
-    antlrcpp::Any visitInteger(MiniDecafParser::IntegerContext *ctx) override;
-    antlrcpp::Any visitMulDiv(MiniDecafParser::MulDivContext *ctx) override;
-    antlrcpp::Any visitAddSub(MiniDecafParser::AddSubContext *ctx) override;
-    antlrcpp::Any visitLogicOr(MiniDecafParser::LogicOrContext *ctx) override;
-    antlrcpp::Any visitLogicAnd(MiniDecafParser::LogicAndContext *ctx) override;
-    antlrcpp::Any visitEqual(MiniDecafParser::EqualContext *ctx) override;
-    antlrcpp::Any visitLessGreat(MiniDecafParser::LessGreatContext *ctx) override;
+  antlrcpp::Any visitInteger(MiniDecafParser::IntegerContext *ctx) override;
+  antlrcpp::Any visitMulDiv(MiniDecafParser::MulDivContext *ctx) override;
+  antlrcpp::Any visitAddSub(MiniDecafParser::AddSubContext *ctx) override;
+  antlrcpp::Any visitLogicOr(MiniDecafParser::LogicOrContext *ctx) override;
+  antlrcpp::Any visitLogicAnd(MiniDecafParser::LogicAndContext *ctx) override;
+  antlrcpp::Any visitEqual(MiniDecafParser::EqualContext *ctx) override;
+  antlrcpp::Any visitLessGreat(MiniDecafParser::LessGreatContext *ctx) override;
   antlrcpp::Any visitFuncCall(MiniDecafParser::FuncCallContext *ctx) override;
-antlrcpp::Any visitFunction(MiniDecafParser::FunctionContext *ctx) override;
+  antlrcpp::Any visitFunction(MiniDecafParser::FunctionContext *ctx) override;
 
 private:
-    LLVMContext& TheContext;
-    IRBuilder<>& Builder(TheContext);
-    std::unique_ptr<Module>& TheModule;
-    std::map<std::string, Value *>& NamedValues;
+  LLVMContext &TheContext;
+  IRBuilder<> &Builder(TheContext);
+  std::unique_ptr<Module> &TheModule;
+  std::map<std::string, Value *> &NamedValues;
 };
+
+#endif
